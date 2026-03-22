@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import Image from 'next/image'
 import { createSupabaseBrowserClient } from '@/lib/supabase'
 import { useRouter, useSearchParams }  from 'next/navigation'
@@ -11,7 +11,7 @@ interface ClinicBranding {
   logoUrl?: string | null
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const supabase = createSupabaseBrowserClient()
   const router   = useRouter()
   const params   = useSearchParams()
@@ -168,5 +168,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
