@@ -1,0 +1,417 @@
+// ============================================================
+//  USS-I.COM — Prisma Schema
+//  Stack: Next.js 14 · Supabase (PostgreSQL) · Prisma ORM
+//  Version: 1.0  |  2026
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────
+
+enum Triage {
+  P1 // Critique / Rouge
+  P2 // Urgent  / Orange
+  P3 // Semi-urgent / Jaune
+  P4 // Non-urgent  / Vert
+}
+
+enum StatutVisite {
+  EN_ATTENTE
+  EN_COURS
+  TERMINE
+  TRANSFERE
+}
+
+enum Orientation {
+  SORTIE_DOMICILE
+  HOSPITALISATION
+  TRANSFERT_SAMU
+  OBSERVATION_UHCD
+  DECES
+}
+
+enum Sexe {
+  M
+  F
+}
+
+enum TypeMedicament {
+  P // Princeps
+  G // Générique
+}
+
+enum StatutBilan {
+  PRESCRIT
+  EN_ATTENTE_RESULTAT
+  RESULTAT_DISPONIBLE
+  CRITIQUE
+  ANNULE
+}
+
+enum RoleUser {
+  MEDECIN_URGENTISTE
+  INFIRMIER
+  AGENT_ACCUEIL
+  ADMIN
+}
+
+// ─────────────────────────────────────────
+// USERS (médecins, infirmiers, accueil)
+// ─────────────────────────────────────────
+
+model User {
+  id            String   @id @default(uuid())
+  supabaseId    String   @unique // auth.users.id from Supabase Auth
+  email         String   @unique
+  nom           String
+  prenom        String
+  role          RoleUser @default(MEDECIN_URGENTISTE)
+  specialite    String?
+  telephone     String?
+  actif         Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  consultations Consultation[]
+  visites_triage Visite[]      @relation("MedecinTriage")
+  visites_pec    Visite[]      @relation("MedecinPEC")
+
+  @@map("users")
+}
+
+// ─────────────────────────────────────────
+// PATIENTS
+// ─────────────────────────────────────────
+
+model Patient {
+  id              String   @id @default(uuid())
+  cin             String?  @unique
+  nom             String
+  prenom          String
+  dateNaissance   DateTime?
+  sexe            Sexe
+  telephone       String?
+  telephoneUrgence String?
+  contactUrgence  String?  // Nom contact urgence
+  email           String?
+  adresse         String?
+  ville           String?
+
+  // Médical
+  groupeSanguin   String?  // A+, B-, O+, AB+...
+  mutuelle        String?  // CNSS, CNOPS, Privée, Aucune
+  medecinTraitant String?
+
+  // Métadonnées
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  visites         Visite[]
+
+  @@index([cin])
+  @@index([nom, prenom])
+  @@map("patients")
+}
+
+// ─────────────────────────────────────────
+// VISITES AUX URGENCES
+// ─────────────────────────────────────────
+
+model Visite {
+  id              String       @id @default(uuid())
+  patientId       String
+  patient         Patient      @relation(fields: [patientId], references: [id])
+
+  // Triage
+  triage          Triage       @default(P3)
+  motif           String       // Motif principal d'admission
+  triageAt        DateTime     @default(now())
+  medecinTriageId String?
+  medecinTriage   User?        @relation("MedecinTriage", fields: [medecinTriageId], references: [id])
+
+  // Prise en charge
+  statut          StatutVisite @default(EN_ATTENTE)
+  boxId           String?
+  box             Box?         @relation(fields: [boxId], references: [id])
+  medecinPECId    String?
+  medecinPEC      User?        @relation("MedecinPEC", fields: [medecinPECId], references: [id])
+  prisEnChargeAt  DateTime?
+
+  // Clôture
+  orientation     Orientation?
+  diagnosticPrincipal String?  // Code CIM-10
+  diagnosticLibelle   String?
+  conduiteATenir  String?      // Plan thérapeutique / notes
+  examenClinique  String?
+
+  termineeAt      DateTime?
+  dureeMinutes    Int?         // Calculé à la fermeture
+
+  // Métadonnées
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  constantes      ConstantesVitales[]
+  consultation    Consultation?
+  prescriptions   Prescription[]
+  bilans          Bilan[]
+
+  @@index([patientId])
+  @@index([statut])
+  @@index([triage])
+  @@index([triageAt])
+  @@map("visites")
+}
+
+// ─────────────────────────────────────────
+// BOXES
+// ─────────────────────────────────────────
+
+model Box {
+  id          String   @id @default(uuid())
+  numero      Int      @unique
+  nom         String   // "Box 1", "Box Réa", "Box Plâtre"
+  type        String?  // "standard", "reanimation", "platre", "isolement"
+  actif       Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  visites     Visite[]
+
+  @@map("boxes")
+}
+
+// ─────────────────────────────────────────
+// CONSTANTES VITALES (multi-relevés par visite)
+// ─────────────────────────────────────────
+
+model ConstantesVitales {
+  id          String   @id @default(uuid())
+  visiteId    String
+  visite      Visite   @relation(fields: [visiteId], references: [id], onDelete: Cascade)
+
+  // Paramètres principaux
+  taSystolique  Int?     // mmHg
+  taDiastolique Int?     // mmHg
+  fc            Int?     // bpm — Fréquence cardiaque
+  spo2          Float?   // % — Saturation O2
+  fr            Int?     // /min — Fréquence respiratoire
+  temperature   Float?   // °C
+  glasgow       Int?     // /15
+  glycemie      Float?   // g/L — Dextro
+  eva           Int?     // /10 — Échelle Visuelle Analogique douleur
+  poids         Float?   // kg
+  taille        Float?   // cm
+  imc           Float?   // Calculé automatiquement
+
+  notes         String?
+  releveAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([visiteId])
+  @@index([releveAt])
+  @@map("constantes_vitales")
+}
+
+// ─────────────────────────────────────────
+// CONSULTATIONS (SOAP note liée à la visite)
+// ─────────────────────────────────────────
+
+model Consultation {
+  id                  String   @id @default(uuid())
+  visiteId            String   @unique
+  visite              Visite   @relation(fields: [visiteId], references: [id], onDelete: Cascade)
+  medecinId           String
+  medecin             User     @relation(fields: [medecinId], references: [id])
+
+  // SOAP
+  subjectif           String?  // Motif et plainte du patient
+  objectif            String?  // Examen clinique
+  assessment          String?  // Diagnostic CIM-10 + libellé
+  plan                String?  // Conduite à tenir / plan thérapeutique
+
+  diagnosticCIM10     String?
+  diagnosticLibelle   String?
+
+  isDraft             Boolean  @default(true)
+  finaliseeAt         DateTime?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("consultations")
+}
+
+// ─────────────────────────────────────────
+// PRESCRIPTIONS (ordonnances)
+// ─────────────────────────────────────────
+
+model Prescription {
+  id            String    @id @default(uuid())
+  visiteId      String
+  visite        Visite    @relation(fields: [visiteId], references: [id], onDelete: Cascade)
+
+  isDraft       Boolean   @default(true)
+  valideeAt     DateTime?
+  imprimeeAt    DateTime?
+
+  totalEstimeMad Float?   // Somme PPV des médicaments
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  items         PrescriptionItem[]
+
+  @@index([visiteId])
+  @@map("prescriptions")
+}
+
+model PrescriptionItem {
+  id              String       @id @default(uuid())
+  prescriptionId  String
+  prescription    Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  medicamentId    String
+  medicament      Medicament   @relation(fields: [medicamentId], references: [id])
+
+  // Posologie
+  dose            String?      // "500mg", "1 comprimé"
+  frequence       String?      // "3x/jour", "matin et soir"
+  duree           String?      // "7 jours", "1 mois"
+  voie            String?      // "oral", "IV", "IM"
+  instructions    String?      // Notes spécifiques
+
+  createdAt       DateTime     @default(now())
+
+  @@map("prescription_items")
+}
+
+// ─────────────────────────────────────────
+// BILANS & EXAMENS
+// ─────────────────────────────────────────
+
+model Bilan {
+  id            String      @id @default(uuid())
+  visiteId      String
+  visite        Visite      @relation(fields: [visiteId], references: [id], onDelete: Cascade)
+
+  code          String      // "NFS", "CRP", "ECG", "RX_THORAX"
+  libelle       String      // "Numération Formule Sanguine"
+  type          String?     // "biologie", "imagerie", "ecg", "autre"
+
+  statut        StatutBilan @default(PRESCRIT)
+
+  resultat      String?     // Valeur ou texte libre
+  isCritique    Boolean     @default(false)
+  notes         String?
+
+  prescritAt    DateTime    @default(now())
+  resultatAt    DateTime?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([visiteId])
+  @@map("bilans")
+}
+
+// ─────────────────────────────────────────
+// MÉDICAMENTS — Référentiel CNOPS 2014
+// (5 917 spécialités, import one-shot)
+// ─────────────────────────────────────────
+
+model Medicament {
+  id                    String         @id  // EAN-13
+  nomCommercial         String
+  dci                   String         // Dénomination Commune Internationale
+  dosage                String?
+  forme                 String?        // "Comprimé", "Sirop", "Injectable"...
+  presentation          String?        // "Boîte de 30 comprimés"
+  laboratoire           String?
+
+  ppv                   Float?         // Prix Public Vente (MAD)
+  prixHopital           Float?         // Prix Hospitalier (MAD)
+  prixBaseRemboursement Float?         // Prix Base Remboursement CNOPS
+  type                  TypeMedicament @default(P)
+  tauxRemboursement     Int            @default(0) // 0 ou 70 (%)
+
+  actif                 Boolean        @default(true)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  prescriptionItems     PrescriptionItem[]
+
+  @@index([nomCommercial])
+  @@index([dci])
+  @@index([forme])
+  @@map("medicaments")
+}
+
+// ─────────────────────────────────────────
+// ANTÉCÉDENTS PATIENTS
+// ─────────────────────────────────────────
+
+model Antecedent {
+  id          String   @id @default(uuid())
+  patientId   String
+  type        String   // "medical", "chirurgical", "allergie", "traitement_habituel", "familial"
+  description String
+  dateDebut   DateTime?
+  dateFin     DateTime?
+  actif       Boolean  @default(true)
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([patientId])
+  @@index([type])
+  @@map("antecedents")
+}
+
+// ─────────────────────────────────────────
+// ALLERGIES (sous-type d'antécédent, mais
+// table dédiée pour alertes rapides)
+// ─────────────────────────────────────────
+
+model Allergie {
+  id          String   @id @default(uuid())
+  patientId   String
+  substance   String   // "Pénicilline", "AINS", "Latex"...
+  reaction    String?  // "Urticaire", "Bronchospasme", "Anaphylaxie"
+  severite    String?  // "legere", "moderee", "severe"
+  confirmee   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([patientId])
+  @@map("allergies")
+}
+
+// ─────────────────────────────────────────
+// ENCAISSEMENTS / FACTURATION
+// ─────────────────────────────────────────
+
+model Encaissement {
+  id              String   @id @default(uuid())
+  visiteId        String
+  montantTotal    Float    // MAD
+  montantPaye     Float    @default(0)
+  montantRestant  Float    // Calculé
+  modePaiement    String?  // "especes", "cheque", "virement", "mutuelle"
+  mutuelle        String?
+  tauxCouverture  Float?   // % pris en charge par mutuelle
+  notes           String?
+  payeAt          DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([visiteId])
+  @@map("encaissements")
+}

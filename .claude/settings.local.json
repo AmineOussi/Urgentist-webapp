@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Read(//Users/mac/.npm-global/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(npx claude:*)",
+      "Read(//Users/mac/.claude/**)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "supabase"
+  ],
+  "enableAllProjectMcpServers": true
+}

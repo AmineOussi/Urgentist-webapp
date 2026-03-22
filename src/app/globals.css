@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Google Fonts — Inter var ──────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+  --brand:       #3366ff;
+  --brand-dark:  #1432e1;
+  --brand-light: #eef5ff;
+  --danger:      #ef4444;
+  --warning:     #f59e0b;
+  --success:     #10b981;
+  --sidebar-w:   72px;
+  --sidebar-w-expanded: 240px;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+body {
+  font-family: 'Inter var', 'Inter', system-ui, sans-serif;
+  background: #f4f6fb;
+  color: #111827;
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* ── Triage badges ─────────────────────────────────────────── */
+.badge-P1 { @apply bg-red-600    text-white        text-xs font-bold px-2.5 py-0.5 rounded-full; animation: pulseP1 2s ease-in-out infinite; }
+.badge-P2 { @apply bg-orange-500 text-white        text-xs font-bold px-2.5 py-0.5 rounded-full; }
+.badge-P3 { @apply bg-amber-400  text-amber-900    text-xs font-bold px-2.5 py-0.5 rounded-full; }
+.badge-P4 { @apply bg-emerald-500 text-white       text-xs font-bold px-2.5 py-0.5 rounded-full; }
+
+/* ── Bilan statuts ─────────────────────────────────────────── */
+.bilan-CRITIQUE             { @apply bg-red-50    text-red-700    border border-red-200    rounded-full text-xs font-medium px-2.5 py-0.5; }
+.bilan-RESULTAT_DISPONIBLE  { @apply bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-medium px-2.5 py-0.5; }
+.bilan-PRESCRIT             { @apply bg-blue-50   text-blue-700   border border-blue-200   rounded-full text-xs font-medium px-2.5 py-0.5; }
+.bilan-EN_ATTENTE_RESULTAT  { @apply bg-amber-50  text-amber-700  border border-amber-200  rounded-full text-xs font-medium px-2.5 py-0.5; }
+.bilan-ANNULE               { @apply bg-gray-100  text-gray-500   border border-gray-200   rounded-full text-xs font-medium px-2.5 py-0.5 line-through; }
+
+/* ── Shimmer skeleton ──────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, #f0f2f7 25%, #e4e8f0 50%, #f0f2f7 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 8px;
+}
+
+/* ── Glass card ────────────────────────────────────────────── */
+.glass {
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+/* ── Focus ring ────────────────────────────────────────────── */
+.focus-ring {
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3366ff;
+}
+*:focus-visible {
+  outline: none;
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #3366ff;
+}
+
+/* ── Prose tiptap ──────────────────────────────────────────── */
+.prose-sm p { margin: 0.25rem 0; }

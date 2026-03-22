@@ -1,0 +1,29 @@
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Dependencies
+node_modules/
+
+# Environment variables — NE PAS COMMITTER
+.env
+.env.local
+.env.production
+
+# Prisma
+prisma/migrations/**/*.js
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
