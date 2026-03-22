@@ -25,9 +25,6 @@ async function requireAuth() {
 }
 
 export async function GET() {
-  const user = await requireAuth()
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-
   const { data, error } = await db
     .from('clinic_settings')
     .select('data')

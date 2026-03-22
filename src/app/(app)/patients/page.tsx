@@ -76,31 +76,40 @@ export default async function PatientsPage({ searchParams }: { searchParams: Sea
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {(patients ?? []).map((p: any) => (
-                    <tr key={p.id} className="hover:bg-blue-50/20 transition-colors group">
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold shrink-0">
-                            {(p.prenom?.[0] ?? '')}{(p.nom?.[0] ?? '')}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-900">{p.nom} {p.prenom}</p>
-                            <p className="text-xs text-gray-400">{p.sexe === 'M' ? 'Homme' : 'Femme'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 font-mono text-gray-600 text-xs">{p.cin ?? '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{age(p.dateNaissance) ? `${age(p.dateNaissance)} ans` : '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{p.telephone ?? '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-600">{p.ville ?? '—'}</td>
-                      <td className="px-5 py-3.5 text-gray-400 text-xs">{formatDate(p.createdAt)}</td>
+                    <tr
+                      key={p.id}
+                      className="relative hover:bg-brand-50/50 hover:shadow-[inset_3px_0_0_0_theme(colors.brand.500)] transition-all duration-150 group cursor-pointer"
+                    >
+                      {/* Full-row invisible link overlay */}
                       <td className="px-5 py-3.5">
                         <Link
                           href={`/patients/${p.id}`}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50
-                            hover:bg-brand-100 rounded-xl transition-colors group-hover:shadow-sm"
-                        >
-                          Dossier <ChevronRight className="w-3 h-3" />
-                        </Link>
+                          className="absolute inset-0 z-0"
+                          aria-label={`Ouvrir le dossier de ${p.prenom} ${p.nom}`}
+                        />
+                        <div className="relative z-10 flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors
+                            ${p.sexe === 'F' ? 'bg-pink-100 text-pink-700 group-hover:bg-pink-200' : 'bg-brand-100 text-brand-700 group-hover:bg-brand-200'}`}>
+                            {(p.prenom?.[0] ?? '').toUpperCase()}{(p.nom?.[0] ?? '').toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors">
+                              {p.prenom} {p.nom.toUpperCase()}
+                            </p>
+                            <p className="text-xs text-gray-400">{p.sexe === 'M' ? 'Homme' : p.sexe === 'F' ? 'Femme' : '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 relative z-10 font-mono text-gray-500 text-xs">{p.cin ?? '—'}</td>
+                      <td className="px-5 py-3.5 relative z-10 text-gray-600">{age(p.dateNaissance) != null ? `${age(p.dateNaissance)} ans` : '—'}</td>
+                      <td className="px-5 py-3.5 relative z-10 text-gray-600">{p.telephone ?? '—'}</td>
+                      <td className="px-5 py-3.5 relative z-10 text-gray-600">{p.ville ?? '—'}</td>
+                      <td className="px-5 py-3.5 relative z-10 text-gray-400 text-xs">{formatDate(p.createdAt)}</td>
+                      <td className="px-5 py-3.5 relative z-10">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-brand-700 bg-brand-50
+                          group-hover:bg-brand-100 group-hover:shadow-sm rounded-xl transition-all">
+                          Dossier <ChevronRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
+                        </span>
                       </td>
                     </tr>
                   ))}
