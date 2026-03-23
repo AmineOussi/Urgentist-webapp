@@ -202,8 +202,8 @@ function ResultatModal({ bilan, open, onClose, onMutate }: {
 }
 
 // ── Main tab ──────────────────────────────────────────────────
-export default function BilansTab({ bilans, visiteId, onMutate }: {
-  bilans: Bilan[]; visiteId: string; onMutate: () => void
+export default function BilansTab({ bilans, visiteId, onMutate, readOnly }: {
+  bilans: Bilan[]; visiteId: string; onMutate: () => void; readOnly?: boolean
 }) {
   const [prescribeOpen, setPrescribeOpen] = useState(false)
   const [resultBilan,   setResultBilan]   = useState<Bilan | null>(null)
@@ -217,9 +217,11 @@ export default function BilansTab({ bilans, visiteId, onMutate }: {
           <h2 className="text-sm font-bold text-gray-900">Bilans & Examens</h2>
           <p className="text-xs text-gray-400 mt-0.5">{bilans.length} examen{bilans.length > 1 ? 's' : ''} prescrit{bilans.length > 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setPrescribeOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
-          Prescrire
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setPrescribeOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
+            Prescrire
+          </Button>
+        )}
       </div>
 
       {/* Critical banner */}
@@ -268,7 +270,7 @@ export default function BilansTab({ bilans, visiteId, onMutate }: {
                 <p className="text-[11px] text-gray-400 font-mono whitespace-nowrap">
                   {new Date(b.prescritAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
-                {b.statut !== 'ANNULE' && b.statut !== 'RESULTAT_DISPONIBLE' && (
+                {!readOnly && b.statut !== 'ANNULE' && b.statut !== 'RESULTAT_DISPONIBLE' && (
                   <button
                     onClick={() => setResultBilan(b)}
                     className="text-xs font-medium text-brand-600 hover:text-brand-800 bg-brand-50 hover:bg-brand-100 px-2.5 py-1 rounded-lg transition-colors"

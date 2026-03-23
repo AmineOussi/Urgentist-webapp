@@ -114,6 +114,7 @@ function LoginForm() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                onBlur={e => setEmail(e.target.value)}
                 required
                 autoComplete="email"
                 autoFocus
@@ -132,6 +133,7 @@ function LoginForm() {
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onBlur={e => setPassword(e.target.value)}
                   required
                   autoComplete="current-password"
                   className="w-full px-4 py-3 pr-11 border-2 border-gray-100 rounded-xl text-sm font-medium focus:outline-none focus:border-brand-400 focus:bg-brand-50/30 transition-all bg-gray-50 placeholder:text-gray-300 placeholder:font-normal"

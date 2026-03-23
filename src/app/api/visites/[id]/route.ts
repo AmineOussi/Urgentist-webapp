@@ -23,7 +23,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       patient:patients!patientId (*),
       box:boxes!boxId (*),
       constantes_vitales (*),
-      consultations (*),
+      consultation:consultations (*),
       bilans (*),
       prescriptions (
         *,
@@ -37,7 +37,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     .single()
 
   if (error) return NextResponse.json({ error: 'Visite introuvable' }, { status: 404 })
-  return NextResponse.json(visite)
+
+  // consultations is returned as array by Supabase — flatten to single object
+  const consultation = Array.isArray(visite.consultation)
+    ? visite.consultation[0] ?? null
+    : visite.consultation ?? null
+
+  return NextResponse.json({ ...visite, consultation })
 }
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
@@ -49,8 +55,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   if (body.statut      !== undefined) updates.statut      = body.statut
   if (body.boxId       !== undefined) updates.boxId       = body.boxId
   if (body.orientation !== undefined) updates.orientation = body.orientation
-  if (body.diagnostic  !== undefined) updates.diagnostic  = body.diagnostic
-  if (body.statut === 'TERMINE')      updates.termineeAt  = new Date().toISOString()
+  if (body.diagnostic  !== undefined) updates.diagnosticPrincipal = body.diagnostic
+  if (body.statut === 'EN_COURS')     updates.prisEnChargeAt = new Date().toISOString()
+  if (body.statut === 'TERMINE')      updates.termineeAt     = new Date().toISOString()
 
   const { data: visite, error } = await db
     .from('visites')

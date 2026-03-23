@@ -284,7 +284,7 @@ function UploadModal({ patientId, open, onClose, onUploaded }: {
 }
 
 // ── Document card ─────────────────────────────────────────────
-function DocumentCard({ doc, onDelete }: { doc: PatientDocument; onDelete: (id: string) => void }) {
+function DocumentCard({ doc, onDelete, readOnly }: { doc: PatientDocument; onDelete: (id: string) => void; readOnly?: boolean }) {
   const { toast }                 = useToast()
   const [deleting, setDeleting]   = useState(false)
   const cfg                       = docTypeConfig(doc.type)
@@ -334,14 +334,16 @@ function DocumentCard({ doc, onDelete }: { doc: PatientDocument; onDelete: (id: 
           >
             <ExternalLink className="w-4 h-4" />
           </a>
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); handleDelete() }}
-            disabled={deleting}
-            className="p-2.5 bg-white rounded-xl text-gray-700 hover:text-red-600 shadow-lg transition-colors"
-          >
-            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); handleDelete() }}
+              disabled={deleting}
+              className="p-2.5 bg-white rounded-xl text-gray-700 hover:text-red-600 shadow-lg transition-colors"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            </button>
+          )}
         </div>
       </div>
 
@@ -358,8 +360,8 @@ function DocumentCard({ doc, onDelete }: { doc: PatientDocument; onDelete: (id: 
 }
 
 // ── Main tab ──────────────────────────────────────────────────
-export default function DocumentsTab({ patientId, onMutate }: {
-  patientId: string; onMutate: () => void
+export default function DocumentsTab({ patientId, onMutate, readOnly }: {
+  patientId: string; onMutate: () => void; readOnly?: boolean
 }) {
   const [documents, setDocuments]   = useState<PatientDocument[]>([])
   const [loading,   setLoading]     = useState(true)
@@ -394,13 +396,15 @@ export default function DocumentsTab({ patientId, onMutate }: {
             {documents.length} document{documents.length > 1 ? 's' : ''}
           </p>
         </div>
-        <Button
-          onClick={() => setUploadOpen(true)}
-          icon={<Plus className="w-4 h-4" />}
-          size="sm"
-        >
-          Ajouter
-        </Button>
+        {!readOnly && (
+          <Button
+            onClick={() => setUploadOpen(true)}
+            icon={<Plus className="w-4 h-4" />}
+            size="sm"
+          >
+            Ajouter
+          </Button>
+        )}
       </div>
 
       {/* Type filter */}
@@ -460,7 +464,7 @@ export default function DocumentsTab({ patientId, onMutate }: {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {filtered.map(doc => (
-            <DocumentCard key={doc.id} doc={doc} onDelete={handleDelete} />
+            <DocumentCard key={doc.id} doc={doc} onDelete={handleDelete} readOnly={readOnly} />
           ))}
         </div>
       )}

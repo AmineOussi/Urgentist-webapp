@@ -132,8 +132,8 @@ function AjouterConstantesModal({ visiteId, open, onClose, onMutate }: {
 }
 
 // ── Main tab ──────────────────────────────────────────────────
-export default function ConstantesTab({ constantes, visiteId, onMutate }: {
-  constantes: Constante[]; visiteId: string; onMutate: () => void
+export default function ConstantesTab({ constantes, visiteId, onMutate, readOnly }: {
+  constantes: Constante[]; visiteId: string; onMutate: () => void; readOnly?: boolean
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const last = constantes[constantes.length - 1] ?? null
@@ -149,9 +149,11 @@ export default function ConstantesTab({ constantes, visiteId, onMutate }: {
             {hasData ? `${constantes.length} relevé${constantes.length > 1 ? 's' : ''} · dernier à ${new Date(last!.releveAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : 'Aucun relevé'}
           </p>
         </div>
-        <Button onClick={() => setAddOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
-          Nouveau relevé
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setAddOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
+            Nouveau relevé
+          </Button>
+        )}
       </div>
 
       {/* KPI cards */}

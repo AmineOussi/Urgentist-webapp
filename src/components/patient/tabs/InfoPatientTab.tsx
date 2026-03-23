@@ -221,9 +221,10 @@ interface Props {
   allergies: Allergie[]
   antecedents: Antecedent[]
   onMutate: () => void
+  readOnly?: boolean
 }
 
-export default function InfoPatientTab({ patientId, allergies, antecedents, onMutate }: Props) {
+export default function InfoPatientTab({ patientId, allergies, antecedents, onMutate, readOnly }: Props) {
   const [addAllergie, setAddAllergie]     = useState(false)
   const [addAntecedent, setAddAntecedent] = useState(false)
 
@@ -244,18 +245,17 @@ export default function InfoPatientTab({ patientId, allergies, antecedents, onMu
               </span>
             )}
           </div>
-          <Button onClick={() => setAddAllergie(true)} icon={<Plus className="w-3.5 h-3.5" />} size="xs" variant="ghost">
-            Ajouter
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setAddAllergie(true)} icon={<Plus className="w-3.5 h-3.5" />} size="xs" variant="ghost">
+              Ajouter
+            </Button>
+          )}
         </div>
 
         {allergies.length === 0 ? (
           <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center py-8 gap-2">
             <ShieldCheck className="w-8 h-8 text-emerald-300" />
             <p className="text-sm text-gray-400">Aucune allergie connue</p>
-            <Button onClick={() => setAddAllergie(true)} variant="secondary" icon={<Plus className="w-3.5 h-3.5" />} size="xs">
-              Déclarer une allergie
-            </Button>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-card divide-y divide-gray-50 overflow-hidden">
@@ -293,18 +293,17 @@ export default function InfoPatientTab({ patientId, allergies, antecedents, onMu
             <Heart className="w-4 h-4 text-pink-500" />
             <h2 className="text-sm font-bold text-gray-900">Antécédents médicaux</h2>
           </div>
-          <Button onClick={() => setAddAntecedent(true)} icon={<Plus className="w-3.5 h-3.5" />} size="xs" variant="ghost">
-            Ajouter
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setAddAntecedent(true)} icon={<Plus className="w-3.5 h-3.5" />} size="xs" variant="ghost">
+              Ajouter
+            </Button>
+          )}
         </div>
 
         {antecedents.length === 0 ? (
           <div className="bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center py-8 gap-2">
             <Heart className="w-8 h-8 text-gray-300" />
             <p className="text-sm text-gray-400">Aucun antécédent renseigné</p>
-            <Button onClick={() => setAddAntecedent(true)} variant="secondary" icon={<Plus className="w-3.5 h-3.5" />} size="xs">
-              Ajouter un antécédent
-            </Button>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-card divide-y divide-gray-50 overflow-hidden">

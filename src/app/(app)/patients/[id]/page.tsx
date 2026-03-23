@@ -29,9 +29,10 @@ export default async function PatientPage({ params, searchParams }: Props) {
     .sort((a: any, b: any) => new Date(b.triageAt).getTime() - new Date(a.triageAt).getTime())
     .slice(0, 10)
 
-  const visiteId = searchParams.visite ?? visites.find(
-    (v: any) => v.statut === 'EN_ATTENTE' || v.statut === 'EN_COURS'
-  )?.id
+  // Prefer active visit, fall back to most recent (e.g. TERMINE)
+  const visiteId = searchParams.visite
+    ?? visites.find((v: any) => v.statut === 'EN_ATTENTE' || v.statut === 'EN_COURS')?.id
+    ?? visites[0]?.id
 
   let visiteData = null
   if (visiteId) {
@@ -55,7 +56,11 @@ export default async function PatientPage({ params, searchParams }: Props) {
       .single()
 
     if (data) {
-      // Normalise Supabase shape → PatientView shape (camelCase + flat)
+      // Supabase returns an object (not array) for one-to-one relations (@unique FK)
+      const consultation = Array.isArray(data.consultations)
+        ? data.consultations[0] ?? null
+        : data.consultations ?? null
+
       visiteData = {
         ...data,
         // constantes_vitales → constantesVitales (sorted asc)
@@ -63,7 +68,7 @@ export default async function PatientPage({ params, searchParams }: Props) {
           (a: any, b: any) => new Date(a.releveAt).getTime() - new Date(b.releveAt).getTime()
         ),
         // consultations[] → consultation (first or null)
-        consultation: data.consultations?.[0] ?? null,
+        consultation,
         // flatten prescription_items → items, flatten medicament fields
         prescriptions: (data.prescriptions ?? []).map((p: any) => ({
           ...p,

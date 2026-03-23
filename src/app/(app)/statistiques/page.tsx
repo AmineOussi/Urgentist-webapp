@@ -65,19 +65,19 @@ const TRIAGE_CONFIG: Record<string, { label: string; color: string; bg: string; 
 }
 
 const ORIENTATION_LABELS: Record<string, string> = {
-  DOMICILE:        'Retour domicile',
-  HOSPITALISATION: 'Hospitalisation',
-  TRANSFERT:       'Transfert',
-  DECES:           'Décès',
-  FUGUE:           'Fugue / AMA',
+  SORTIE_DOMICILE:  'Retour domicile',
+  HOSPITALISATION:  'Hospitalisation',
+  TRANSFERT_SAMU:   'Transfert SAMU',
+  OBSERVATION_UHCD: 'Observation UHCD',
+  DECES:            'Décès',
 }
 
 const ORIENTATION_COLORS: Record<string, string> = {
-  DOMICILE:        'bg-emerald-500',
-  HOSPITALISATION: 'bg-blue-500',
-  TRANSFERT:       'bg-violet-500',
-  DECES:           'bg-gray-500',
-  FUGUE:           'bg-amber-500',
+  SORTIE_DOMICILE:  'bg-emerald-500',
+  HOSPITALISATION:  'bg-blue-500',
+  TRANSFERT_SAMU:   'bg-violet-500',
+  OBSERVATION_UHCD: 'bg-amber-500',
+  DECES:            'bg-gray-500',
 }
 
 // ── KPI Card ───────────────────────────────────────────────────

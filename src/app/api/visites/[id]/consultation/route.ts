@@ -16,24 +16,25 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   const { subjectif, objectif, assessment, plan } = await request.json()
+  const visiteId = params.id
+  const now = new Date().toISOString()
 
   // Check if consultation exists for this visite
   const { data: existing } = await db
     .from('consultations')
     .select('id')
-    .eq('visiteId', params.id)
-    .single()
+    .eq('visiteId', visiteId)
+    .maybeSingle()
 
   if (existing) {
-    // Update
     const { data, error } = await db
       .from('consultations')
       .update({
-        subjectif: subjectif ?? null,
-        objectif:  objectif  ?? null,
+        subjectif:  subjectif  ?? null,
+        objectif:   objectif   ?? null,
         assessment: assessment ?? null,
         plan:       plan       ?? null,
-        updatedAt:  new Date().toISOString(),
+        updatedAt:  now,
       })
       .eq('id', existing.id)
       .select()
@@ -42,22 +43,31 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data)
   } else {
-    // Get DB user
-    const { data: dbUser } = await db
+    // Get DB user — medecinId is required
+    const { data: dbUser, error: userError } = await db
       .from('users')
       .select('id')
       .eq('supabaseId', user.id)
       .single()
 
+    if (userError || !dbUser) {
+      return NextResponse.json(
+        { error: 'Utilisateur introuvable dans la base' },
+        { status: 400 },
+      )
+    }
+
     const { data, error } = await db
       .from('consultations')
       .insert({
-        visiteId:   params.id,
-        medecinId:  dbUser?.id ?? null,
-        subjectif:  subjectif ?? null,
-        objectif:   objectif  ?? null,
+        visiteId,
+        medecinId:  dbUser.id,
+        subjectif:  subjectif  ?? null,
+        objectif:   objectif   ?? null,
         assessment: assessment ?? null,
         plan:       plan       ?? null,
+        createdAt:  now,
+        updatedAt:  now,
       })
       .select()
       .single()
