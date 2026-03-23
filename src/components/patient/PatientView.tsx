@@ -3,27 +3,32 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import type { PatientData, Visite } from './types'
-import ConstantesTab   from './tabs/ConstantesTab'
-import SoapTab         from './tabs/SoapTab'
-import BilansTab       from './tabs/BilansTab'
-import OrdonnancesTab  from './tabs/OrdonnancesTab'
-import InfoPatientTab  from './tabs/InfoPatientTab'
-import DocumentsTab    from './tabs/DocumentsTab'
-import { Modal }       from '@/components/ui/modal'
-import { Button }      from '@/components/ui/button'
-import { useToast }    from '@/components/ui/toast'
-import { DateInput }   from '@/components/ui/date-input'
+import ConstantesTab      from './tabs/ConstantesTab'
+import SoapTab            from './tabs/SoapTab'
+import BilansTab          from './tabs/BilansTab'
+import OrdonnancesTab     from './tabs/OrdonnancesTab'
+import InfoPatientTab     from './tabs/InfoPatientTab'
+import DocumentsTab       from './tabs/DocumentsTab'
+import HistoriqueTab      from './tabs/HistoriqueTab'
+import VueGeneraleTab     from './tabs/VueGeneraleTab'
+import EditPatientModal   from './EditPatientModal'
+import { Modal }          from '@/components/ui/modal'
+import { Button }         from '@/components/ui/button'
+import { useToast }       from '@/components/ui/toast'
 import {
   SkeletonConstantesTab, SkeletonSoapTab,
   SkeletonBilansTab, SkeletonOrdonnancesTab, SkeletonInfoTab, SkeletonDocumentsTab,
+  SkeletonHistoriqueTab, SkeletonVueGeneraleTab,
 } from '@/components/ui/skeleton'
 import { useRefreshing } from '@/hooks/useRefreshing'
 import { cn }          from '@/lib/utils'
 import {
   ChevronLeft, User, AlertTriangle, Clock, Activity,
   FlaskConical, Pill, Heart, ChevronDown,
-  CheckCircle2, XCircle, Loader2, Phone, Calendar,
-  Droplets, Stethoscope, FolderOpen, Pencil,
+  CheckCircle2, XCircle, Phone, Calendar,
+  Droplets, Stethoscope, FolderOpen, Pencil, History,
+  ShieldAlert, BookOpen, ChevronUp, Play, Plus,
+  ArrowRight, CircleDot, LogOut,
 } from 'lucide-react'
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -53,176 +58,132 @@ const STATUT_VISITE: Record<string, { label: string; color: string; icon: React.
 
 // ── Tab definitions ────────────────────────────────────────────
 const TABS = [
+  { id: 'vue',         label: 'Vue générale',icon: <User         className="w-4 h-4" /> },
   { id: 'constantes',  label: 'Constantes', icon: <Activity     className="w-4 h-4" /> },
   { id: 'soap',        label: 'SOAP',       icon: <Stethoscope  className="w-4 h-4" /> },
   { id: 'bilans',      label: 'Bilans',     icon: <FlaskConical className="w-4 h-4" /> },
   { id: 'ordonnances', label: 'Ordonnances',icon: <Pill         className="w-4 h-4" /> },
   { id: 'infos',       label: 'Infos',      icon: <Heart        className="w-4 h-4" /> },
   { id: 'documents',   label: 'Documents',  icon: <FolderOpen   className="w-4 h-4" /> },
+  { id: 'historique',  label: 'Historique', icon: <History      className="w-4 h-4" /> },
 ] as const
 
 type TabId = typeof TABS[number]['id']
 
-// ── Edit patient modal ─────────────────────────────────────────
-const GROUPE_SANGUIN = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-
-interface EditForm {
-  nom: string; prenom: string; dateNaissance: string; sexe: string
-  cin: string; telephone: string; groupeSanguin: string
-  mutuelle: string; medecinTraitant: string
+// ── Allergy + antecedent severity config ───────────────────────
+const SEVERITY: Record<string, { label: string; bg: string; text: string; border: string; pulse: boolean }> = {
+  FATALE:   { label: 'Fatale',   bg: 'bg-red-600',    text: 'text-white',      border: 'border-red-600',    pulse: true  },
+  SEVERE:   { label: 'Sévère',   bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-400',    pulse: true  },
+  MODEREE:  { label: 'Modérée',  bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300', pulse: false },
+  LEGERE:   { label: 'Légère',   bg: 'bg-yellow-50',  text: 'text-yellow-700', border: 'border-yellow-300', pulse: false },
 }
 
-function EditPatientModal({ patient, open, onClose, onSaved }: {
-  patient: PatientData; open: boolean; onClose: () => void; onSaved: () => void
+const ANTECEDENT_TYPE: Record<string, { label: string; color: string }> = {
+  medical:     { label: 'Médical',     color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  chirurgical: { label: 'Chir.',       color: 'bg-violet-100 text-violet-700 border-violet-200' },
+  familial:    { label: 'Familial',    color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  allergie:    { label: 'Allergie',    color: 'bg-red-100 text-red-700 border-red-200' },
+  autre:       { label: 'Autre',       color: 'bg-gray-100 text-gray-600 border-gray-200' },
+}
+
+function AllergyAntecedentPanel({ allergies, antecedents, onGotoInfos }: {
+  allergies:   import('./types').Allergie[]
+  antecedents: import('./types').Antecedent[]
+  onGotoInfos: () => void
 }) {
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState<EditForm>({
-    nom:            patient.nom,
-    prenom:         patient.prenom,
-    dateNaissance:  patient.dateNaissance ?? '',
-    sexe:           patient.sexe,
-    cin:            patient.cin ?? '',
-    telephone:      patient.telephone ?? '',
-    groupeSanguin:  patient.groupeSanguin ?? '',
-    mutuelle:       patient.mutuelle ?? '',
-    medecinTraitant: patient.medecinTraitant ?? '',
-  })
-
-  // Re-sync when patient changes (e.g. after a refresh)
-  const [synced, setSynced] = useState(false)
-  if (!synced && open) {
-    setForm({
-      nom:            patient.nom,
-      prenom:         patient.prenom,
-      dateNaissance:  patient.dateNaissance ?? '',
-      sexe:           patient.sexe,
-      cin:            patient.cin ?? '',
-      telephone:      patient.telephone ?? '',
-      groupeSanguin:  patient.groupeSanguin ?? '',
-      mutuelle:       patient.mutuelle ?? '',
-      medecinTraitant: patient.medecinTraitant ?? '',
-    })
-    setSynced(true)
-  }
-  if (!open && synced) setSynced(false)
-
-  function set(field: keyof EditForm, value: string) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
-
-  async function submit() {
-    if (!form.nom.trim() || !form.prenom.trim()) {
-      toast('error', 'Nom et prénom sont requis')
-      return
-    }
-    setLoading(true)
-    const res = await fetch(`/api/patients/${patient.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-    setLoading(false)
-    if (res.ok) {
-      toast('success', 'Dossier patient mis à jour')
-      onClose()
-      onSaved()
-    } else {
-      const json = await res.json().catch(() => ({}))
-      toast('error', json.error ?? 'Erreur lors de la mise à jour')
-    }
-  }
-
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
-      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
-      {children}
-    </div>
-  )
-
-  const inputCls = 'w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white'
-  const selectCls = inputCls + ' cursor-pointer'
+  const hasCritical = allergies.some(a => a.severite === 'FATALE' || a.severite === 'SEVERE')
+  const hasAllergies    = allergies.length > 0
+  const hasAntecedents  = antecedents.length > 0
+  if (!hasAllergies && !hasAntecedents) return null
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Modifier le dossier patient"
-      description="Les modifications sont enregistrées immédiatement dans la base de données."
-      size="md"
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>Annuler</Button>
-          <Button onClick={submit} loading={loading} icon={<Loader2 className={cn('w-4 h-4', loading ? 'animate-spin' : 'hidden')} />}>
-            Enregistrer
-          </Button>
-        </>
-      }
-    >
-      <div className="space-y-5">
-        {/* Identity */}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Prénom">
-            <input className={inputCls} value={form.prenom} onChange={e => set('prenom', e.target.value)} placeholder="Prénom" />
-          </Field>
-          <Field label="Nom">
-            <input className={inputCls} value={form.nom} onChange={e => set('nom', e.target.value.toUpperCase())} placeholder="NOM" />
-          </Field>
-        </div>
+    <div className="border-t border-gray-100 divide-y divide-gray-100">
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Date de naissance">
-            <DateInput
-              value={form.dateNaissance}
-              onChange={v => set('dateNaissance', v)}
-            />
-          </Field>
-          <Field label="Sexe">
-            <select className={selectCls} value={form.sexe} onChange={e => set('sexe', e.target.value)}>
-              <option value="M">Masculin</option>
-              <option value="F">Féminin</option>
-              <option value="A">Autre</option>
-            </select>
-          </Field>
-        </div>
+      {/* ── Allergies row ── */}
+      {hasAllergies && (
+        <button
+          type="button"
+          onClick={onGotoInfos}
+          title="Voir les allergies"
+          className={cn(
+            'w-full flex items-start gap-3 px-5 sm:px-6 py-3 text-left group transition-colors',
+            hasCritical ? 'bg-red-50 hover:bg-red-100/70' : 'bg-orange-50/60 hover:bg-orange-100/60',
+          )}
+        >
+          <ShieldAlert className={cn(
+            'w-4 h-4 shrink-0 mt-0.5',
+            hasCritical ? 'text-red-600 animate-pulse' : 'text-orange-500',
+          )} />
+          <div className="flex-1 min-w-0">
+            <p className={cn('text-xs font-bold uppercase tracking-widest mb-1.5', hasCritical ? 'text-red-500' : 'text-orange-500')}>
+              Allergies ({allergies.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {allergies.map(a => {
+                const sev = SEVERITY[a.severite] ?? SEVERITY.LEGERE
+                return (
+                  <span
+                    key={a.id}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border',
+                      sev.bg, sev.text, sev.border,
+                      sev.pulse && 'animate-pulse',
+                    )}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    {a.substance}
+                    <span className="font-normal opacity-70">— {sev.label}</span>
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-0.5 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
 
-        {/* Identification */}
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="CIN / N° pièce d'identité">
-            <input className={inputCls} value={form.cin} onChange={e => set('cin', e.target.value)} placeholder="A212345" />
-          </Field>
-          <Field label="Téléphone">
-            <input type="tel" className={inputCls} value={form.telephone} onChange={e => set('telephone', e.target.value)} placeholder="06 XX XX XX XX" />
-          </Field>
-        </div>
-
-        {/* Medical */}
-        <div className="grid grid-cols-3 gap-3">
-          <Field label="Groupe sanguin">
-            <select className={selectCls} value={form.groupeSanguin} onChange={e => set('groupeSanguin', e.target.value)}>
-              <option value="">—</option>
-              {GROUPE_SANGUIN.map(g => <option key={g} value={g}>{g}</option>)}
-            </select>
-          </Field>
-          <Field label="Mutuelle / Assurance">
-            <input className={inputCls} value={form.mutuelle} onChange={e => set('mutuelle', e.target.value)} placeholder="CNSS, CNOPS…" />
-          </Field>
-          <Field label="Médecin traitant">
-            <input className={inputCls} value={form.medecinTraitant} onChange={e => set('medecinTraitant', e.target.value)} placeholder="Dr. Dupont" />
-          </Field>
-        </div>
-      </div>
-    </Modal>
+      {/* ── Antécédents row ── */}
+      {hasAntecedents && (
+        <button
+          type="button"
+          onClick={onGotoInfos}
+          title="Voir les antécédents"
+          className="w-full flex items-start gap-3 px-5 sm:px-6 py-3 text-left bg-blue-50/50 hover:bg-blue-100/50 group transition-colors"
+        >
+          <BookOpen className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1.5">
+              Antécédents actifs ({antecedents.length})
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {antecedents.map(ant => {
+                const cfg = ANTECEDENT_TYPE[ant.type] ?? ANTECEDENT_TYPE.autre
+                return (
+                  <span
+                    key={ant.id}
+                    className={cn('inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border', cfg.color)}
+                  >
+                    <span className="font-semibold">{cfg.label}</span>
+                    <span className="opacity-80">{ant.description}</span>
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-0.5 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+      )}
+    </div>
   )
 }
 
 // ── Clôture visite modal ───────────────────────────────────────
 const ORIENTATIONS = [
-  { value: 'DOMICILE',        label: 'Retour à domicile' },
-  { value: 'HOSPITALISATION', label: 'Hospitalisation' },
-  { value: 'TRANSFERT',       label: 'Transfert vers autre service' },
-  { value: 'DECES',           label: 'Décès' },
-  { value: 'FUGUE',           label: 'Fugue / AMA' },
+  { value: 'SORTIE_DOMICILE',  label: 'Retour à domicile' },
+  { value: 'HOSPITALISATION',  label: 'Hospitalisation' },
+  { value: 'TRANSFERT_SAMU',   label: 'Transfert SAMU' },
+  { value: 'OBSERVATION_UHCD', label: 'Observation UHCD' },
+  { value: 'DECES',            label: 'Décès' },
 ]
 
 function ClotureVisiteModal({ visiteId, open, onClose, onMutate }: {
@@ -230,7 +191,7 @@ function ClotureVisiteModal({ visiteId, open, onClose, onMutate }: {
 }) {
   const { toast } = useToast()
   const [loading, setLoading]         = useState(false)
-  const [orientation, setOrientation] = useState('DOMICILE')
+  const [orientation, setOrientation] = useState('SORTIE_DOMICILE')
   const [diagnostic, setDiagnostic]   = useState('')
 
   async function submit() {
@@ -377,6 +338,231 @@ function VisitSelector({
   )
 }
 
+// ── Lifecycle stepper ──────────────────────────────────────────
+const LIFECYCLE_STEPS = [
+  { key: 'EN_ATTENTE', label: 'En attente',   icon: <Clock className="w-4 h-4" /> },
+  { key: 'EN_COURS',   label: 'En cours',     icon: <Activity className="w-4 h-4" /> },
+  { key: 'TERMINE',    label: 'Clôturé',      icon: <CheckCircle2 className="w-4 h-4" /> },
+] as const
+
+const STEP_INDEX: Record<string, number> = { EN_ATTENTE: 0, EN_COURS: 1, TERMINE: 2, TRANSFERE: 2 }
+
+function LifecycleStepper({ statut }: { statut: string }) {
+  const current = STEP_INDEX[statut] ?? 0
+
+  return (
+    <div className="flex items-center gap-1">
+      {LIFECYCLE_STEPS.map((step, i) => {
+        const isDone    = i < current
+        const isCurrent = i === current
+        return (
+          <div key={step.key} className="flex items-center gap-1">
+            {i > 0 && (
+              <div className={cn(
+                'w-6 h-0.5 rounded-full transition-colors',
+                isDone ? 'bg-brand-500' : 'bg-gray-200',
+              )} />
+            )}
+            <div className={cn(
+              'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all',
+              isDone    && 'bg-brand-100 text-brand-700',
+              isCurrent && 'bg-brand-600 text-white shadow-sm',
+              !isDone && !isCurrent && 'bg-gray-100 text-gray-400',
+            )}>
+              {step.icon}
+              <span className="hidden sm:inline">{step.label}</span>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Lifecycle action bar ──────────────────────────────────────
+function LifecycleActions({
+  visite,
+  patientId,
+  onPriseEnCharge,
+  onCloture,
+  onNouvelleVisite,
+  loading,
+}: {
+  visite: Visite | null
+  patientId: string
+  onPriseEnCharge: () => void
+  onCloture: () => void
+  onNouvelleVisite: () => void
+  loading: boolean
+}) {
+  if (!visite) {
+    return (
+      <Button
+        onClick={onNouvelleVisite}
+        size="sm"
+        icon={<Plus className="w-3.5 h-3.5" />}
+      >
+        Nouvelle visite
+      </Button>
+    )
+  }
+
+  if (visite.statut === 'EN_ATTENTE') {
+    return (
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={onPriseEnCharge}
+          loading={loading}
+          size="sm"
+          icon={<Play className="w-3.5 h-3.5" />}
+          className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-sm animate-pulse hover:animate-none"
+        >
+          Prendre en charge
+        </Button>
+      </div>
+    )
+  }
+
+  if (visite.statut === 'EN_COURS') {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">
+          <CircleDot className="w-3 h-3 animate-pulse" />
+          En cours
+        </span>
+        <Button
+          onClick={onCloture}
+          variant="outline"
+          size="sm"
+          icon={<LogOut className="w-3.5 h-3.5" />}
+        >
+          Clôturer
+        </Button>
+      </div>
+    )
+  }
+
+  // TERMINE / TRANSFERE
+  return (
+    <div className="flex items-center gap-2">
+      <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+        <CheckCircle2 className="w-3 h-3" />
+        {visite.statut === 'TRANSFERE' ? 'Transféré' : 'Clôturé'}
+      </span>
+      <Button
+        onClick={onNouvelleVisite}
+        variant="outline"
+        size="sm"
+        icon={<Plus className="w-3.5 h-3.5" />}
+      >
+        Nouvelle visite
+      </Button>
+    </div>
+  )
+}
+
+// ── Nouvelle visite modal ─────────────────────────────────────
+const TRIAGE_OPTIONS = [
+  { value: 'P1', label: 'P1 — Urgence absolue', color: 'bg-red-600 text-white border-red-600' },
+  { value: 'P2', label: 'P2 — Urgence relative', color: 'bg-orange-500 text-white border-orange-500' },
+  { value: 'P3', label: 'P3 — Semi-urgent',      color: 'bg-yellow-400 text-gray-800 border-yellow-400' },
+  { value: 'P4', label: 'P4 — Non-urgent',        color: 'bg-green-500 text-white border-green-500' },
+]
+
+function NouvelleVisiteModal({ patientId, patientCin, open, onClose, onCreated }: {
+  patientId: string; patientCin: string | null; open: boolean; onClose: () => void; onCreated: () => void
+}) {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [triage, setTriage]   = useState('P3')
+  const [motif, setMotif]     = useState('')
+
+  async function submit() {
+    if (!motif.trim()) {
+      toast('error', 'Le motif est requis')
+      return
+    }
+    setLoading(true)
+    const res = await fetch('/api/visites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cin: patientCin, triage, motif: motif.trim() }),
+    })
+    setLoading(false)
+    if (res.ok) {
+      toast('success', 'Visite créée')
+      setMotif('')
+      setTriage('P3')
+      onClose()
+      onCreated()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      toast('error', data.error || 'Erreur lors de la création')
+    }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Nouvelle visite"
+      description="Créer une nouvelle visite aux urgences pour ce patient."
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>Annuler</Button>
+          <Button onClick={submit} loading={loading} icon={<Plus className="w-3.5 h-3.5" />}>
+            Créer la visite
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs font-medium text-gray-700 mb-2 block">Niveau de triage</label>
+          <div className="grid grid-cols-2 gap-2">
+            {TRIAGE_OPTIONS.map(o => (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => setTriage(o.value)}
+                className={cn(
+                  'flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-semibold transition-all',
+                  triage === o.value
+                    ? o.color
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300',
+                )}
+              >
+                <span className={cn(
+                  'w-3 h-3 rounded-full shrink-0',
+                  o.value === 'P1' && 'bg-red-600',
+                  o.value === 'P2' && 'bg-orange-500',
+                  o.value === 'P3' && 'bg-yellow-400',
+                  o.value === 'P4' && 'bg-green-500',
+                  triage === o.value && 'ring-2 ring-white',
+                )} />
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-700 mb-1.5 block">
+            Motif d&apos;admission <span className="text-red-500">*</span>
+          </label>
+          <input
+            value={motif}
+            onChange={e => setMotif(e.target.value)}
+            placeholder="Ex: Douleur thoracique, chute, dyspnée…"
+            className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
+            autoFocus
+          />
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Main component ─────────────────────────────────────────────
 interface PatientViewProps {
   patient: PatientData
@@ -384,11 +570,32 @@ interface PatientViewProps {
 }
 
 export default function PatientView({ patient, visite }: PatientViewProps) {
-  const [activeTab,     setActiveTab]     = useState<TabId>('constantes')
+  const [activeTab,     setActiveTab]     = useState<TabId>('vue')
   const [clotureOpen,   setClotureOpen]   = useState(false)
   const [editOpen,      setEditOpen]      = useState(false)
+  const [newVisiteOpen, setNewVisiteOpen] = useState(false)
+  const [pecLoading,    setPecLoading]    = useState(false)
   const { refreshing, refresh }           = useRefreshing()
+  const { toast }                         = useToast()
 
+  async function handlePriseEnCharge() {
+    if (!visite) return
+    setPecLoading(true)
+    const res = await fetch(`/api/visites/${visite.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ statut: 'EN_COURS' }),
+    })
+    setPecLoading(false)
+    if (res.ok) {
+      toast('success', 'Patient pris en charge')
+      refresh()
+    } else {
+      toast('error', 'Erreur lors de la prise en charge')
+    }
+  }
+
+  const isTermine     = visite?.statut === 'TERMINE' || visite?.statut === 'TRANSFERE'
   const tc            = visite ? (TRIAGE_CONFIG[visite.triage] ?? TRIAGE_CONFIG.P4) : null
   const statutConfig  = visite ? (STATUT_VISITE[visite.statut] ?? STATUT_VISITE.EN_ATTENTE) : null
   const patientAge    = age(patient.dateNaissance)
@@ -431,16 +638,7 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
                   activeId={visite.id}
                 />
               )}
-              {visite && (visite.statut === 'EN_ATTENTE' || visite.statut === 'EN_COURS') && (
-                <Button
-                  onClick={() => setClotureOpen(true)}
-                  variant="outline"
-                  size="xs"
-                  icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                >
-                  Clôturer
-                </Button>
-              )}
+              {visite && <LifecycleStepper statut={visite.statut} />}
             </div>
           </div>
 
@@ -526,6 +724,38 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
             </div>
           </div>
 
+          {/* ── Lifecycle action bar ── */}
+          <div className="flex items-center justify-between py-3 border-t border-gray-50">
+            <div className="flex items-center gap-2">
+              {visite?.triageAt && (
+                <span className="text-xs text-gray-400">
+                  <Clock className="w-3 h-3 inline mr-1" />
+                  Arrivée {new Date(visite.triageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {visite?.statut === 'EN_COURS' && visite.triageAt && (
+                <span className="text-xs text-gray-400">
+                  &middot; Attente {Math.round((Date.now() - new Date(visite.triageAt).getTime()) / 60000)} min
+                </span>
+              )}
+            </div>
+            <LifecycleActions
+              visite={visite}
+              patientId={patient.id}
+              onPriseEnCharge={handlePriseEnCharge}
+              onCloture={() => setClotureOpen(true)}
+              onNouvelleVisite={() => setNewVisiteOpen(true)}
+              loading={pecLoading}
+            />
+          </div>
+
+          {/* ── Allergies + Antécédents strip ── */}
+          <AllergyAntecedentPanel
+            allergies={patient.allergies}
+            antecedents={patient.antecedents}
+            onGotoInfos={() => setActiveTab('infos')}
+          />
+
           {/* Critical bilans banner (above tabs) */}
           {hasCritique && (
             <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 animate-pulse">
@@ -584,30 +814,48 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
               <p className="text-sm font-semibold text-gray-500">Aucune visite active</p>
               <p className="text-xs text-gray-400 mt-1">Créez une nouvelle visite pour commencer la prise en charge</p>
             </div>
+            <Button
+              onClick={() => setNewVisiteOpen(true)}
+              icon={<Plus className="w-4 h-4" />}
+            >
+              Nouvelle visite
+            </Button>
           </div>
         ) : refreshing ? (
           /* Per-tab skeleton shown during router.refresh() */
           <div className="animate-fade-in">
+            {activeTab === 'vue'         && <SkeletonVueGeneraleTab />}
             {activeTab === 'constantes'  && <SkeletonConstantesTab />}
             {activeTab === 'soap'        && <SkeletonSoapTab />}
             {activeTab === 'bilans'      && <SkeletonBilansTab />}
             {activeTab === 'ordonnances' && <SkeletonOrdonnancesTab />}
             {activeTab === 'infos'       && <SkeletonInfoTab />}
             {activeTab === 'documents'   && <SkeletonDocumentsTab />}
+            {activeTab === 'historique'  && <SkeletonHistoriqueTab />}
           </div>
         ) : (
           <>
+            {activeTab === 'vue' && (
+              <VueGeneraleTab
+                patient={patient}
+                visite={visite}
+                onTabChange={setActiveTab}
+              />
+            )}
             {activeTab === 'constantes' && (
               <ConstantesTab
                 constantes={visite.constantesVitales}
                 visiteId={visite.id}
                 onMutate={refresh}
+                readOnly={isTermine}
               />
             )}
             {activeTab === 'soap' && (
               <SoapTab
                 consultation={visite.consultation}
                 visiteId={visite.id}
+                onSaved={refresh}
+                readOnly={isTermine}
               />
             )}
             {activeTab === 'bilans' && (
@@ -615,6 +863,7 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
                 bilans={visite.bilans}
                 visiteId={visite.id}
                 onMutate={refresh}
+                readOnly={isTermine}
               />
             )}
             {activeTab === 'ordonnances' && (
@@ -622,6 +871,7 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
                 prescriptions={visite.prescriptions}
                 visiteId={visite.id}
                 onMutate={refresh}
+                readOnly={isTermine}
               />
             )}
             {activeTab === 'infos' && (
@@ -630,12 +880,20 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
                 allergies={patient.allergies}
                 antecedents={patient.antecedents}
                 onMutate={refresh}
+                readOnly={isTermine}
               />
             )}
             {activeTab === 'documents' && (
               <DocumentsTab
                 patientId={patient.id}
                 onMutate={refresh}
+                readOnly={isTermine}
+              />
+            )}
+            {activeTab === 'historique' && (
+              <HistoriqueTab
+                patientId={patient.id}
+                patientCreatedAt={(patient as any).createdAt}
               />
             )}
           </>
@@ -643,12 +901,13 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
       </div>
 
       {/* Modals */}
-      <EditPatientModal
-        patient={patient}
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        onSaved={refresh}
-      />
+      {editOpen && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setEditOpen(false)}
+          onSaved={refresh}
+        />
+      )}
       {visite && (
         <ClotureVisiteModal
           visiteId={visite.id}
@@ -657,6 +916,13 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
           onMutate={refresh}
         />
       )}
+      <NouvelleVisiteModal
+        patientId={patient.id}
+        patientCin={patient.cin}
+        open={newVisiteOpen}
+        onClose={() => setNewVisiteOpen(false)}
+        onCreated={refresh}
+      />
     </div>
   )
 }

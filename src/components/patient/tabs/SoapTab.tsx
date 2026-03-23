@@ -28,7 +28,7 @@ const BORDER_COLORS: Record<string, string> = {
 
 type SoapState = { subjectif: string; objectif: string; assessment: string; plan: string }
 
-export default function SoapTab({ consultation, visiteId }: { consultation: Consultation | null; visiteId: string }) {
+export default function SoapTab({ consultation, visiteId, onSaved, readOnly }: { consultation: Consultation | null; visiteId: string; onSaved?: () => void; readOnly?: boolean }) {
   const { toast } = useToast()
   const [values, setValues] = useState<SoapState>({
     subjectif:  consultation?.subjectif  ?? '',
@@ -38,6 +38,16 @@ export default function SoapTab({ consultation, visiteId }: { consultation: Cons
   })
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Sync state when consultation prop changes (page refresh / router.refresh)
+  useEffect(() => {
+    setValues({
+      subjectif:  consultation?.subjectif  ?? '',
+      objectif:   consultation?.objectif   ?? '',
+      assessment: consultation?.assessment ?? '',
+      plan:       consultation?.plan       ?? '',
+    })
+  }, [consultation])
 
   // Auto-save 1.5s after last keystroke
   const save = useCallback(async (data: SoapState) => {
@@ -50,6 +60,7 @@ export default function SoapTab({ consultation, visiteId }: { consultation: Cons
     if (res.ok) {
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 2500)
+      onSaved?.()
     } else {
       setStatus('idle')
       toast('error', 'Erreur de sauvegarde')
@@ -72,8 +83,11 @@ export default function SoapTab({ consultation, visiteId }: { consultation: Cons
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-gray-900">Note SOAP</h2>
-          <p className="text-xs text-gray-400 mt-0.5">Sauvegarde automatique à chaque modification</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {readOnly ? 'Consultation clôturée — lecture seule' : 'Sauvegarde automatique à chaque modification'}
+          </p>
         </div>
+        {!readOnly && (
         <div className="flex items-center gap-2 h-8 px-3 rounded-xl bg-gray-50 border border-gray-100">
           {status === 'saving' && (
             <><Clock className="w-3.5 h-3.5 text-amber-500 animate-spin-slow" />
@@ -90,6 +104,7 @@ export default function SoapTab({ consultation, visiteId }: { consultation: Cons
               </span></>
           )}
         </div>
+        )}
       </div>
 
       {/* SOAP fields */}
@@ -105,17 +120,23 @@ export default function SoapTab({ consultation, visiteId }: { consultation: Cons
                 <p className="text-xs text-gray-400 hidden sm:block">{f.hint}</p>
               </div>
             </div>
-            <textarea
-              value={values[f.key]}
-              onChange={e => change(f.key, e.target.value)}
-              rows={3}
-              placeholder={`${f.hint}`}
-              className={cn(
-                'w-full px-4 py-3 text-sm text-gray-800 placeholder-gray-300 bg-white',
-                'resize-none outline-none',
-                'focus:bg-gray-50/50 transition-colors duration-150',
-              )}
-            />
+            {readOnly ? (
+              <div className="px-4 py-3 text-sm text-gray-800 min-h-[3.5rem] whitespace-pre-wrap">
+                {values[f.key] || <span className="text-gray-300 italic">Non renseigné</span>}
+              </div>
+            ) : (
+              <textarea
+                value={values[f.key]}
+                onChange={e => change(f.key, e.target.value)}
+                rows={3}
+                placeholder={`${f.hint}`}
+                className={cn(
+                  'w-full px-4 py-3 text-sm text-gray-800 placeholder-gray-300 bg-white',
+                  'resize-none outline-none',
+                  'focus:bg-gray-50/50 transition-colors duration-150',
+                )}
+              />
+            )}
           </div>
         ))}
       </div>

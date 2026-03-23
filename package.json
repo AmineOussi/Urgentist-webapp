@@ -13,6 +13,7 @@
     "db:generate": "prisma generate",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed-meds": "tsx scripts/import-medicaments.ts",
+    "db:seed-dummy": "tsx scripts/seed-dummy.ts",
     "db:reset": "prisma migrate reset --force"
   },
   "dependencies": {

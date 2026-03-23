@@ -245,3 +245,77 @@ export function SkeletonDocumentsTab() {
     </div>
   )
 }
+
+
+// ── Vue générale tab ───────────────────────────────────────────
+export function SkeletonVueGeneraleTab() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      {/* Alert banner */}
+      <Skeleton className="h-10 w-full rounded-xl" />
+      {/* Card grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            {/* Card header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 bg-gray-50/80">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="w-7 h-7 rounded-xl" />
+                <Skeleton className="h-4 w-28 rounded" />
+              </div>
+              <Skeleton className="w-4 h-4 rounded" />
+            </div>
+            {/* Card body */}
+            <div className="px-4 py-3 space-y-2.5">
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-16 rounded" />
+                <Skeleton className="h-3 w-24 rounded" />
+              </div>
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-20 rounded" />
+                <Skeleton className="h-3 w-20 rounded" />
+              </div>
+              <div className="flex justify-between">
+                <Skeleton className="h-3 w-14 rounded" />
+                <Skeleton className="h-3 w-28 rounded" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function SkeletonHistoriqueTab() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-4 w-4 rounded" />
+        <Skeleton className="h-4 w-40 rounded" />
+        <Skeleton className="h-3 w-20 rounded" />
+      </div>
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex gap-4">
+          <div className="flex flex-col items-center">
+            <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+            <div className="w-0.5 bg-gray-100 flex-1 mt-1" />
+          </div>
+          <div className="flex-1 pb-4">
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-3 h-3 rounded-full" />
+                <Skeleton className="h-4 w-28 rounded" />
+                <Skeleton className="h-4 w-16 rounded-full" />
+              </div>
+              <div className="space-y-2 pl-2">
+                <Skeleton className="h-10 rounded-xl" />
+                <Skeleton className="h-10 rounded-xl" />
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

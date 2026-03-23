@@ -941,8 +941,8 @@ function PrescriptionCard({ p, index }: { p: Prescription; index: number }) {
 // ─────────────────────────────────────────────────────────────────
 //  Main tab
 // ─────────────────────────────────────────────────────────────────
-export default function OrdonnancesTab({ prescriptions, visiteId, onMutate }: {
-  prescriptions: Prescription[]; visiteId: string; onMutate: () => void
+export default function OrdonnancesTab({ prescriptions, visiteId, onMutate, readOnly }: {
+  prescriptions: Prescription[]; visiteId: string; onMutate: () => void; readOnly?: boolean
 }) {
   const [newOpen, setNewOpen] = useState(false)
   const hasDraft = prescriptions.some(p => p.isDraft)
@@ -967,9 +967,11 @@ export default function OrdonnancesTab({ prescriptions, visiteId, onMutate }: {
             )}
           </p>
         </div>
-        <Button onClick={() => setNewOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
-          Nouvelle ordonnance
-        </Button>
+        {!readOnly && (
+          <Button onClick={() => setNewOpen(true)} icon={<Plus className="w-4 h-4" />} size="sm">
+            Nouvelle ordonnance
+          </Button>
+        )}
       </div>
 
       {hasDraft && (
