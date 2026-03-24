@@ -46,8 +46,8 @@ const ANT_TYPE: Record<string, { label: string; color: string }> = {
   autre:       { label: 'Autre',       color: 'bg-gray-100 text-gray-600 border-gray-200' },
 }
 const ORIENTATION_LABEL: Record<string, string> = {
-  DOMICILE: 'Retour domicile', HOSPITALISATION: 'Hospitalisé',
-  TRANSFERT: 'Transféré', DECES: 'Décès', FUGUE: 'Fugue / AMA',
+  SORTIE_DOMICILE: 'Retour domicile', HOSPITALISATION: 'Hospitalisé',
+  TRANSFERT_SAMU: 'Transféré SAMU', OBSERVATION_UHCD: 'Observation UHCD', DECES: 'Décès',
 }
 
 function age(dob: string | null) {

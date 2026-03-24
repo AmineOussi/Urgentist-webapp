@@ -66,11 +66,11 @@ const STATUT_LABEL: Record<string, { label: string; icon: React.ReactNode; color
   TRANSFERE:  { label: 'Transféré',   icon: <XCircle      className="w-3 h-3" />, color: 'text-purple-600 bg-purple-50' },
 }
 const ORIENTATION_LABEL: Record<string, string> = {
-  DOMICILE:        'Retour à domicile',
-  HOSPITALISATION: 'Hospitalisé',
-  TRANSFERT:       'Transféré',
-  DECES:           'Décès',
-  FUGUE:           'Fugue / AMA',
+  SORTIE_DOMICILE:  'Retour à domicile',
+  HOSPITALISATION:  'Hospitalisé',
+  TRANSFERT_SAMU:   'Transfert SAMU',
+  OBSERVATION_UHCD: 'Observation UHCD',
+  DECES:            'Décès',
 }
 const DOC_TYPE_LABEL: Record<string, string> = {
   radio:       'Radiologie',

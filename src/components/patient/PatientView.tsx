@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import type { PatientData, Visite } from './types'
 import ConstantesTab      from './tabs/ConstantesTab'
@@ -91,7 +91,10 @@ function AllergyAntecedentPanel({ allergies, antecedents, onGotoInfos }: {
   antecedents: import('./types').Antecedent[]
   onGotoInfos: () => void
 }) {
-  const hasCritical = allergies.some(a => a.severite === 'FATALE' || a.severite === 'SEVERE')
+  const [allergyOpen, setAllergyOpen]     = useState(false)
+  const [antecedentOpen, setAntecedentOpen] = useState(false)
+
+  const hasCritical     = allergies.some(a => a.severite === 'FATALE' || a.severite === 'SEVERE')
   const hasAllergies    = allergies.length > 0
   const hasAntecedents  = antecedents.length > 0
   if (!hasAllergies && !hasAntecedents) return null
@@ -101,67 +104,97 @@ function AllergyAntecedentPanel({ allergies, antecedents, onGotoInfos }: {
 
       {/* ── Allergies row ── */}
       {hasAllergies && (
-        <button
-          type="button"
-          onClick={onGotoInfos}
-          title="Voir les allergies"
-          className={cn(
-            'w-full flex items-start gap-3 px-5 sm:px-6 py-3 text-left group transition-colors',
-            hasCritical ? 'bg-red-50 hover:bg-red-100/70' : 'bg-orange-50/60 hover:bg-orange-100/60',
-          )}
-        >
-          <ShieldAlert className={cn(
-            'w-4 h-4 shrink-0 mt-0.5',
-            hasCritical ? 'text-red-600 animate-pulse' : 'text-orange-500',
-          )} />
-          <div className="flex-1 min-w-0">
-            <p className={cn('text-xs font-bold uppercase tracking-widest mb-1.5', hasCritical ? 'text-red-500' : 'text-orange-500')}>
+        <div className={cn(
+          'px-5 sm:px-6 transition-colors',
+          hasCritical ? 'bg-red-50/60' : 'bg-orange-50/40',
+        )}>
+          <div className="flex items-center gap-2 h-10">
+            <ShieldAlert className={cn(
+              'w-3.5 h-3.5 shrink-0',
+              hasCritical ? 'text-red-500' : 'text-orange-500',
+            )} />
+            <span className={cn('text-xs font-bold uppercase tracking-wider flex-1', hasCritical ? 'text-red-600' : 'text-orange-600')}>
               Allergies ({allergies.length})
-            </p>
-            <div className="flex flex-wrap gap-2">
+            </span>
+            <button
+              type="button"
+              onClick={() => setAllergyOpen(o => !o)}
+              title={allergyOpen ? 'Réduire' : 'Voir le détail'}
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                hasCritical ? 'text-red-400 hover:text-red-600 hover:bg-red-100' : 'text-orange-400 hover:text-orange-600 hover:bg-orange-100',
+              )}
+            >
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', allergyOpen && 'rotate-180')} />
+            </button>
+            <button
+              type="button"
+              onClick={onGotoInfos}
+              title="Aller à l'onglet Infos"
+              className={cn(
+                'p-1.5 rounded-lg transition-colors',
+                hasCritical ? 'text-red-400 hover:text-red-600 hover:bg-red-100' : 'text-orange-400 hover:text-orange-600 hover:bg-orange-100',
+              )}
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {allergyOpen && (
+            <div className="flex flex-wrap gap-1.5 pb-3 animate-fade-in">
               {allergies.map(a => {
                 const sev = SEVERITY[a.severite] ?? SEVERITY.LEGERE
                 return (
                   <span
                     key={a.id}
                     className={cn(
-                      'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border',
+                      'inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border',
                       sev.bg, sev.text, sev.border,
                       sev.pulse && 'animate-pulse',
                     )}
                   >
-                    <AlertTriangle className="w-3 h-3" />
-                    {a.substance}
-                    <span className="font-normal opacity-70">— {sev.label}</span>
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    {a.substance} — {sev.label}
                   </span>
                 )
               })}
             </div>
-          </div>
-          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-0.5 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-        </button>
+          )}
+        </div>
       )}
 
       {/* ── Antécédents row ── */}
       {hasAntecedents && (
-        <button
-          type="button"
-          onClick={onGotoInfos}
-          title="Voir les antécédents"
-          className="w-full flex items-start gap-3 px-5 sm:px-6 py-3 text-left bg-blue-50/50 hover:bg-blue-100/50 group transition-colors"
-        >
-          <BookOpen className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold uppercase tracking-widest text-blue-500 mb-1.5">
+        <div className="px-5 sm:px-6 bg-blue-50/30">
+          <div className="flex items-center gap-2 h-10">
+            <BookOpen className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-600 flex-1">
               Antécédents actifs ({antecedents.length})
-            </p>
-            <div className="flex flex-wrap gap-2">
+            </span>
+            <button
+              type="button"
+              onClick={() => setAntecedentOpen(o => !o)}
+              title={antecedentOpen ? 'Réduire' : 'Voir le détail'}
+              className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+            >
+              <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', antecedentOpen && 'rotate-180')} />
+            </button>
+            <button
+              type="button"
+              onClick={onGotoInfos}
+              title="Aller à l'onglet Infos"
+              className="p-1.5 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 transition-colors"
+            >
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {antecedentOpen && (
+            <div className="flex flex-wrap gap-1.5 pb-3 animate-fade-in">
               {antecedents.map(ant => {
                 const cfg = ANTECEDENT_TYPE[ant.type] ?? ANTECEDENT_TYPE.autre
                 return (
                   <span
                     key={ant.id}
-                    className={cn('inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border', cfg.color)}
+                    className={cn('inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border', cfg.color)}
                   >
                     <span className="font-semibold">{cfg.label}</span>
                     <span className="opacity-80">{ant.description}</span>
@@ -169,9 +202,8 @@ function AllergyAntecedentPanel({ allergies, antecedents, onGotoInfos }: {
                 )
               })}
             </div>
-          </div>
-          <ChevronDown className="w-4 h-4 text-gray-400 shrink-0 mt-0.5 -rotate-90 group-hover:translate-x-0.5 transition-transform" />
-        </button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -575,8 +607,22 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
   const [editOpen,      setEditOpen]      = useState(false)
   const [newVisiteOpen, setNewVisiteOpen] = useState(false)
   const [pecLoading,    setPecLoading]    = useState(false)
+  const [collapsed,     setCollapsed]     = useState(false)
   const { refreshing, refresh }           = useRefreshing()
   const { toast }                         = useToast()
+  const mainRef = useRef<HTMLDivElement>(null)
+
+  // Auto-collapse header on scroll (mobile/tablet only)
+  useEffect(() => {
+    const main = mainRef.current?.closest('main') ?? window
+    function onScroll() {
+      if (window.innerWidth >= 1024) { setCollapsed(false); return }
+      const el = main === window ? document.documentElement : main as HTMLElement
+      setCollapsed(el.scrollTop > 80)
+    }
+    main.addEventListener('scroll', onScroll, { passive: true })
+    return () => main.removeEventListener('scroll', onScroll)
+  }, [])
 
   async function handlePriseEnCharge() {
     if (!visite) return
@@ -608,7 +654,7 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
   const allergyCount      = patient.allergies.filter(a => a.severite === 'SEVERE' || a.severite === 'FATALE').length
 
   return (
-    <div className="min-h-screen bg-[#F0F4F8]">
+    <div ref={mainRef} className="min-h-screen bg-[#F0F4F8]">
 
       {/* ── Refresh progress bar ── */}
       {refreshing && (
@@ -622,7 +668,10 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
           {/* Top bar: back + visit selector */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-50">
+          <div className={cn(
+            'flex items-center justify-between py-3 border-b border-gray-50',
+            collapsed && 'lg:flex hidden',
+          )}>
             <Link
               href="/patients"
               className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 font-medium transition-colors"
@@ -642,127 +691,179 @@ export default function PatientView({ patient, visite }: PatientViewProps) {
             </div>
           </div>
 
-          {/* Patient identity row */}
-          <div className="flex items-center gap-4 py-4">
-            {/* Avatar */}
-            <div className={cn(
-              'w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black shrink-0 shadow-sm',
-              patient.sexe === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700',
-            )}>
-              {initials(patient.nom, patient.prenom)}
-            </div>
-
-            {/* Name + meta */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg font-black text-gray-900 leading-tight">
+          {/* ── Compact header (mobile collapsed) ── */}
+          {collapsed && (
+            <div className="flex items-center gap-3 py-2.5 lg:hidden">
+              <Link href="/patients" className="text-gray-400 hover:text-gray-600 shrink-0">
+                <ChevronLeft className="w-4 h-4" />
+              </Link>
+              <div className={cn(
+                'w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0',
+                patient.sexe === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700',
+              )}>
+                {initials(patient.nom, patient.prenom)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-900 truncate">
                   {patient.prenom} {patient.nom.toUpperCase()}
-                </h1>
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(true)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
-                  title="Modifier le dossier patient"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
                 {tc && (
-                  <span className={cn(
-                    'inline-flex items-center text-xs font-black px-2.5 py-1 rounded-xl',
-                    tc.bg, tc.text,
-                    tc.pulse && 'animate-pulse',
-                  )}>
+                  <span className={cn('text-[10px] font-black px-2 py-0.5 rounded-lg', tc.bg, tc.text)}>
                     {visite?.triage}
                   </span>
                 )}
                 {statutConfig && (
-                  <span className={cn('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full', statutConfig.color)}>
-                    {statutConfig.icon} {statutConfig.label}
-                  </span>
-                )}
-                {hasCriticalAllergy && (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full border border-red-200 animate-pulse">
-                    <AlertTriangle className="w-3 h-3" /> Allergie critique
+                  <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', statutConfig.color)}>
+                    {statutConfig.label}
                   </span>
                 )}
               </div>
-
-              {/* Meta row */}
-              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                {patientAge && (
-                  <span className="flex items-center gap-1 text-xs text-gray-500">
-                    <Calendar className="w-3 h-3" />
-                    {patientAge} ans
-                  </span>
-                )}
-                {patient.sexe && (
-                  <span className="text-xs text-gray-500">
-                    {patient.sexe === 'M' ? 'Homme' : patient.sexe === 'F' ? 'Femme' : patient.sexe}
-                  </span>
-                )}
-                {patient.groupeSanguin && (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-                    <Droplets className="w-3 h-3" /> {patient.groupeSanguin}
-                  </span>
-                )}
-                {patient.telephone && (
-                  <span className="flex items-center gap-1 text-xs text-gray-500">
-                    <Phone className="w-3 h-3" /> {patient.telephone}
-                  </span>
-                )}
-                {visite?.motif && (
-                  <span className="text-xs text-gray-500">
-                    <span className="text-gray-400">Motif:</span> {visite.motif}
-                  </span>
-                )}
-                {visite?.box && (
-                  <span className="text-xs font-semibold bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">
-                    {visite.box.nom}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Lifecycle action bar ── */}
-          <div className="flex items-center justify-between py-3 border-t border-gray-50">
-            <div className="flex items-center gap-2">
-              {visite?.triageAt && (
-                <span className="text-xs text-gray-400">
-                  <Clock className="w-3 h-3 inline mr-1" />
-                  Arrivée {new Date(visite.triageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-              {visite?.statut === 'EN_COURS' && visite.triageAt && (
-                <span className="text-xs text-gray-400">
-                  &middot; Attente {Math.round((Date.now() - new Date(visite.triageAt).getTime()) / 60000)} min
-                </span>
-              )}
-            </div>
-            <LifecycleActions
-              visite={visite}
-              patientId={patient.id}
-              onPriseEnCharge={handlePriseEnCharge}
-              onCloture={() => setClotureOpen(true)}
-              onNouvelleVisite={() => setNewVisiteOpen(true)}
-              loading={pecLoading}
-            />
-          </div>
-
-          {/* ── Allergies + Antécédents strip ── */}
-          <AllergyAntecedentPanel
-            allergies={patient.allergies}
-            antecedents={patient.antecedents}
-            onGotoInfos={() => setActiveTab('infos')}
-          />
-
-          {/* Critical bilans banner (above tabs) */}
-          {hasCritique && (
-            <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 animate-pulse">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              Résultats critiques — vérifier l&apos;onglet Bilans
+              <button
+                type="button"
+                onClick={() => { setCollapsed(false); mainRef.current?.closest('main')?.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
             </div>
           )}
+
+          {/* ── Full header (hidden on mobile when collapsed) ── */}
+          <div className={cn(collapsed && 'hidden lg:block')}>
+            {/* Collapse button (mobile only) */}
+            <button
+              type="button"
+              onClick={() => setCollapsed(true)}
+              className="lg:hidden flex items-center justify-center w-full py-1 text-gray-300 hover:text-gray-500 transition-colors"
+              title="Réduire l'en-tête"
+            >
+              <ChevronUp className="w-4 h-4" />
+            </button>
+
+            {/* Patient identity row */}
+            <div className="flex items-center gap-4 py-4">
+              {/* Avatar */}
+              <div className={cn(
+                'w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-black shrink-0 shadow-sm',
+                patient.sexe === 'F' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700',
+              )}>
+                {initials(patient.nom, patient.prenom)}
+              </div>
+
+              {/* Name + meta */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg font-black text-gray-900 leading-tight">
+                    {patient.prenom} {patient.nom.toUpperCase()}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(true)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors"
+                    title="Modifier le dossier patient"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  {tc && (
+                    <span className={cn(
+                      'inline-flex items-center text-xs font-black px-2.5 py-1 rounded-xl',
+                      tc.bg, tc.text,
+                      tc.pulse && 'animate-pulse',
+                    )}>
+                      {visite?.triage}
+                    </span>
+                  )}
+                  {statutConfig && (
+                    <span className={cn('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full', statutConfig.color)}>
+                      {statutConfig.icon} {statutConfig.label}
+                    </span>
+                  )}
+                  {hasCriticalAllergy && (
+                    <span className="inline-flex items-center gap-1 text-xs font-bold bg-red-100 text-red-700 px-2.5 py-1 rounded-full border border-red-200 animate-pulse">
+                      <AlertTriangle className="w-3 h-3" /> Allergie critique
+                    </span>
+                  )}
+                </div>
+
+                {/* Meta row */}
+                <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                  {patientAge && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <Calendar className="w-3 h-3" />
+                      {patientAge} ans
+                    </span>
+                  )}
+                  {patient.sexe && (
+                    <span className="text-xs text-gray-500">
+                      {patient.sexe === 'M' ? 'Homme' : patient.sexe === 'F' ? 'Femme' : patient.sexe}
+                    </span>
+                  )}
+                  {patient.groupeSanguin && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
+                      <Droplets className="w-3 h-3" /> {patient.groupeSanguin}
+                    </span>
+                  )}
+                  {patient.telephone && (
+                    <span className="flex items-center gap-1 text-xs text-gray-500">
+                      <Phone className="w-3 h-3" /> {patient.telephone}
+                    </span>
+                  )}
+                  {visite?.motif && (
+                    <span className="text-xs text-gray-500">
+                      <span className="text-gray-400">Motif:</span> {visite.motif}
+                    </span>
+                  )}
+                  {visite?.box && (
+                    <span className="text-xs font-semibold bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">
+                      {visite.box.nom}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Lifecycle action bar ── */}
+            <div className="flex items-center justify-between py-3 border-t border-gray-50">
+              <div className="flex items-center gap-2">
+                {visite?.triageAt && (
+                  <span className="text-xs text-gray-400">
+                    <Clock className="w-3 h-3 inline mr-1" />
+                    Arrivée {new Date(visite.triageAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+                {visite?.statut === 'EN_COURS' && visite.triageAt && (
+                  <span className="text-xs text-gray-400">
+                    &middot; Attente {Math.round((Date.now() - new Date(visite.triageAt).getTime()) / 60000)} min
+                  </span>
+                )}
+              </div>
+              <LifecycleActions
+                visite={visite}
+                patientId={patient.id}
+                onPriseEnCharge={handlePriseEnCharge}
+                onCloture={() => setClotureOpen(true)}
+                onNouvelleVisite={() => setNewVisiteOpen(true)}
+                loading={pecLoading}
+              />
+            </div>
+
+            {/* ── Allergies + Antécédents strip ── */}
+            <AllergyAntecedentPanel
+              allergies={patient.allergies}
+              antecedents={patient.antecedents}
+              onGotoInfos={() => setActiveTab('infos')}
+            />
+
+            {/* Critical bilans banner (above tabs) */}
+            {hasCritique && (
+              <div className="flex items-center gap-2 px-3 py-2 mb-2 bg-red-50 border border-red-200 rounded-xl text-xs font-semibold text-red-700 animate-pulse">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                Résultats critiques — vérifier l&apos;onglet Bilans
+              </div>
+            )}
+          </div>
 
           {/* ── Tab navigation ── */}
           <div className="flex items-center gap-0.5 overflow-x-auto pb-0 scrollbar-none">

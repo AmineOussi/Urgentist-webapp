@@ -326,13 +326,12 @@ export default function StatistiquesPage() {
   const trend: 'up' | 'down' | 'neutral' = todayVisits > yesterdayAvg ? 'up' : todayVisits < yesterdayAvg ? 'down' : 'neutral'
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in px-5 md:px-8 py-6 pb-24 md:pb-8 max-w-7xl w-full">
-
+    <div className="min-h-full animate-fade-in">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-gray-100 px-5 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
         <div>
-          <h1 className="text-xl font-black text-gray-900">Statistiques</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
+          <h1 className="text-base font-bold text-gray-900 tracking-tight">Statistiques</h1>
+          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">
             {lastFetch
               ? `Actualisé à ${lastFetch.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
               : 'Chargement…'}
@@ -349,7 +348,9 @@ export default function StatistiquesPage() {
           <RefreshCw className={cn('w-3.5 h-3.5', loading && 'animate-spin')} />
           Actualiser
         </button>
-      </div>
+      </header>
+
+      <div className="flex flex-col gap-6 px-5 md:px-8 py-6 pb-24 md:pb-8 max-w-7xl mx-auto w-full">
 
       {/* ── Error ── */}
       {error && (
@@ -516,6 +517,7 @@ export default function StatistiquesPage() {
           </div>
         </>
       ) : null}
+      </div>
     </div>
   )
 }

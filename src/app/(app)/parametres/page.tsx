@@ -300,11 +300,15 @@ export default function ParametresPage() {
   })
 
   return (
-    <div className="flex flex-col gap-6 animate-fade-in px-5 md:px-8 py-6 pb-24 md:pb-8 max-w-3xl w-full">
-      <div>
-        <h1 className="text-xl font-black text-gray-900">Paramètres</h1>
-        <p className="text-sm text-gray-400 mt-0.5">Configuration du service et préférences d&apos;affichage</p>
-      </div>
+    <div className="min-h-full animate-fade-in">
+      <header className="bg-white border-b border-gray-100 px-5 md:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
+        <div>
+          <h1 className="text-base font-bold text-gray-900 tracking-tight">Paramètres</h1>
+          <p className="text-xs text-gray-400 mt-0.5 hidden sm:block">Configuration du service et préférences d&apos;affichage</p>
+        </div>
+      </header>
+
+      <div className="flex flex-col gap-6 px-5 md:px-8 py-6 pb-24 md:pb-8 max-w-3xl mx-auto w-full">
 
       <ClinicInfoSection />
 
@@ -351,6 +355,7 @@ export default function ParametresPage() {
       <p className="text-[11px] text-gray-300 text-center pb-2">
         USS-I · v0.1.0 · © {new Date().getFullYear()} Urgences
       </p>
+      </div>
     </div>
   )
 }
